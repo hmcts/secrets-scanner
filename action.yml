@@ -1,11 +1,16 @@
 name: Secret Scanner
 description: Scans the code base to detect for the presence of secrets.
+inputs:
+  github_token:
+    required: true
+    description: GitHub token for authentication, required for accessing the repository and posting comments.
+  gitleaks_license:
+    required: true
+    description: Gitleaks license key to use the licensed version.
 
 runs:
   using: "composite"
   steps:
-    - uses: actions/checkout@v4
-      
     - uses: gitleaks/gitleaks-action@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

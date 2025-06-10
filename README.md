@@ -46,7 +46,12 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - uses: hmcts/secrets-scanner@main
+        with:
+           github_token: ${{ secrets.GITHUB_TOKEN }}
+           gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
 ```
 
 ## 🔄 Keeping Up to Date
