@@ -16,7 +16,11 @@ This GitHub Action runs both [Gitleaks](https://github.com/gitleaks/gitleaks) an
 ## 🚀 Usage
 
 ```yaml
-- uses: hmcts/secrets-scanner-action@v1
+- uses: hmcts/secrets-scanner@main
+```
+Or the following example will pin to a specific major version:
+```yaml
+- uses: hmcts/secrets-scanner@v1
 ```
 
 ## ✅ Tools Included
@@ -42,7 +46,7 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: hmcts/secrets-scanner-action@v1
+      - uses: hmcts/secrets-scanner@main
 ```
 
 ## 🔄 Keeping Up to Date
@@ -90,7 +94,7 @@ This helps reduce long-term run and maintain costs across consuming projects.
 
 You can verify that `v1` now points to the latest version by visiting:
 
-[https://github.com/hmcts/artefact-version-action/tags](https://github.com/hmcts/artefact-version-action/tags)
+[https://github.com/hmcts/secrets-scanner/tags](https://github.com/hmcts/secrets-scanner/tags)
 
 Make sure both the full version tag (e.g., `v1.0.1`) and the floating `v1` tag appear, and that `v1` points to the latest commit.
 
