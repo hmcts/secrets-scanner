@@ -17,7 +17,7 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github_token }}
         GITLEAKS_LICENSE: ${{ inputs.gitleaks_license }}
 
-    - name: TruffleHog 🐽
-      uses: trufflesecurity/trufflehog@main
+    - name: TruffleHog 🐽 scanning
+      uses: trufflesecurity/trufflehog@v3
       with:
         extra_args: --results=verified,unknown
