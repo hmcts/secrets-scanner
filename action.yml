@@ -13,8 +13,8 @@ runs:
   steps:
     - uses: gitleaks/gitleaks-action@v2
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+        GITLEAKS_LICENSE: ${{ inputs.gitleaks_license }}
 
     - name: Secret Scanning
       uses: trufflesecurity/trufflehog@main
