@@ -54,6 +54,7 @@ jobs:
         with:
            github_token: ${{ secrets.GITHUB_TOKEN }}
            gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
+           gitleaks_regex_internal_url: ${{ secrets.GITLEAKS_REGEX_INTERNAL_URL }}
 ```
 
 ## 🔄 Keeping Up to Date

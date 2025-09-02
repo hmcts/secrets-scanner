@@ -1,0 +1,10 @@
+title = "Custom rules"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "internal-urls"
+description = "Identify internal urls"
+regex = '''${GITLEAKS_REGEX_INTERNAL_URL}'''
+tags = ["internal-urls"]
