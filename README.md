@@ -46,7 +46,7 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -54,7 +54,11 @@ jobs:
         with:
            github_token: ${{ secrets.GITHUB_TOKEN }}
            gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
+           internal_url_regex: ${{ secrets.INTERNAL_URL_REGEX }}
 ```
+
+The internal URL rule will be appended to the default Gitleaks config and executed as part of the scan.
+
 
 ## 🔄 Keeping Up to Date
 
@@ -104,6 +108,10 @@ You can verify that `v1` now points to the latest version by visiting:
 [https://github.com/hmcts/secrets-scanner/tags](https://github.com/hmcts/secrets-scanner/tags)
 
 Make sure both the full version tag (e.g., `v1.0.1`) and the floating `v1` tag appear, and that `v1` points to the latest commit.
+
+### Contribute to This Repository
+
+Contributions are welcome! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines.
 
 ## License
 

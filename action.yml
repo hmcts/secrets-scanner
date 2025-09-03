@@ -7,15 +7,33 @@ inputs:
   gitleaks_license:
     required: true
     description: Gitleaks license key to use the licensed version.
+  internal_url_regex:
+    required: false
+    description: Custom regex to identify internal URLs for scanning.
 
 runs:
   using: "composite"
   steps:
+    - name: Prepare merged Gitleaks config
+      shell: bash
+      run: |
+        echo "Get default Gitleaks config..."
+        curl -sSL https://raw.githubusercontent.com/gitleaks/gitleaks/refs/heads/master/config/gitleaks.toml -o $GITHUB_ACTION_PATH/.gitleaks/rules.toml
+        
+        if [ "${{ inputs.internal_url_regex }}" != "" ]; then
+          echo "Preparing internal URL custom config file..."
+          envsubst < "$GITHUB_ACTION_PATH/.gitleaks/internal-url.toml" > "$GITHUB_ACTION_PATH/.gitleaks/internal-url.toml"
+        
+          echo '# Custom rules appended below' >> $GITHUB_ACTION_PATH/.gitleaks/rules.toml
+          cat $GITHUB_ACTION_PATH/.gitleaks/internal-url.toml >> $GITHUB_ACTION_PATH/.gitleaks/rules.toml
+        fi
+
     - name: Gitleaks scanning
       uses: gitleaks/gitleaks-action@v2
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
         GITLEAKS_LICENSE: ${{ inputs.gitleaks_license }}
+        GITLEAKS_CONFIG: ${{ github.action_path }}/.gitleaks/rules.toml
 
     - name: TruffleHog 🐽 scanning
       uses: trufflesecurity/trufflehog@main

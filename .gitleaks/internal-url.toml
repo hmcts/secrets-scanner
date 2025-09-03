@@ -1,0 +1,8 @@
+title = "Internal URL Detection Rule"
+version = 2
+
+[[rules]]
+id = "internal-url"
+description = "Detects usage of internal or sensitive URLs"
+regex = '''${CUSTOM_REGEX}'''
+tags = ["url", "internal", "sensitive"]
