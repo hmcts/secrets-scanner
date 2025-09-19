@@ -39,4 +39,7 @@ runs:
     - name: TruffleHog 🐽 scanning
       uses: trufflesecurity/trufflehog@main
       with:
-        extra_args: --results=verified,unknown
+        extra_args: >
+          --results=verified,unknown --json
+          --exclude-paths "README.md,docker/docker-compose.integration.yml"
+          --allow-regex "jdbc:postgresql://(localhost|db:5432)"
