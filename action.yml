@@ -50,7 +50,7 @@ runs:
         echo "RUNNER_TEMP=$RUNNER_TEMP"
         echo "Repo root contents:"
         ls -al "$GITHUB_WORKSPACE"
-        CONFIG_PATH="$GITHUB_WORKSPACE/custom_detectors.yml"
+        CONFIG_PATH="${{ github.action_path }}/custom_detectors.yml"
         echo "Asserting config exists at: $CONFIG_PATH"
         if [ ! -f "$CONFIG_PATH" ]; then
           echo "::error file=custom_detectors.yml::Custom detectors file not found at $CONFIG_PATH"
