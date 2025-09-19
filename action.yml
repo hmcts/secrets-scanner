@@ -40,8 +40,7 @@ runs:
       shell: bash
       run: |
         echo "Preparing custom detectors config"
-        cp "${{ github.action_path }}/custom_detectors.yml" "$RUNNER_TEMP/custom_detectors.yml"
-        echo "TRUFFLEHOG_CONFIG=$RUNNER_TEMP/custom_detectors.yml" >> "$GITHUB_ENV"
+        echo "TRUFFLEHOG_CONFIG=${{ github.action_path }}/custom_detectors.yml" >> "$GITHUB_ENV"
         
     - name: TruffleHog 🐽 scanning
       uses: trufflesecurity/trufflehog@main
