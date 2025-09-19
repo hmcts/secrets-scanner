@@ -47,5 +47,5 @@ runs:
       uses: trufflesecurity/trufflehog@main
       with:
         extra_args: >
-          --results=verified,unknown --json
-          --config "$TRUFFLEHOG_CONFIG"
+          --results=verified,unknown
+          --config "${{ env.TRUFFLEHOG_CONFIG }}"
