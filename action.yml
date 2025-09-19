@@ -40,7 +40,9 @@ runs:
       shell: bash
       run: |
         echo "Preparing custom detectors config"
+        echo "pwd dir:"
         pwd
+        echo "github.action_path dir contents:"
         ls -al "${{ github.action_path }}"
         echo "${{ github.action_path }}"
         echo "TRUFFLEHOG_CONFIG=${{ github.action_path }}/custom_detectors.yml" >> "$GITHUB_ENV"
