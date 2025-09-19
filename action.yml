@@ -86,5 +86,6 @@ runs:
       uses: trufflesecurity/trufflehog@main
       with:
         extra_args: >
+          git file://$GITHUB_WORKSPACE
           --results=verified,unknown
           --config "${{ env.TRUFFLEHOG_CONFIG }}"
