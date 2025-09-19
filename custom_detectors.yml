@@ -1,0 +1,13 @@
+detectors:
+  - name: jdbc_urls_detector
+    keywords:
+      - "jdbc"
+      - "postgresql"
+    regex:
+      jdbc_full: 'jdbc:postgresql://[A-Za-z0-9\.\-_%]+:[0-9]+/[A-Za-z0-9_\-]+'
+    exclude_regexes:
+      - 'jdbc:postgresql://localhost(:[0-9]+)?'
+      - 'jdbc:postgresql://db:[0-9]+'
+    exclude_words:
+      - "localhost"
+      - "db:5432"

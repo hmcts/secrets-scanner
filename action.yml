@@ -41,4 +41,4 @@ runs:
       with:
         extra_args: >
           --results=verified,unknown --json
-          --allow-regex "jdbc:postgresql://(localhost|db:5432)"
+          --config "${{ github.action_path }}/custom_detectors.yml"
