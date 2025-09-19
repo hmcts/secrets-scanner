@@ -50,7 +50,14 @@ runs:
         echo "RUNNER_TEMP=$RUNNER_TEMP"
         echo "Repo root contents:"
         ls -al "$GITHUB_WORKSPACE"
-        CONFIG_PATH="${{ github.action_path }}/custom_detectors.yml"
+        CONFIG_PATH="$GITHUB_WORKSPACE/custom_detectors.yml"
+        SRC_CONFIG="${{ github.action_path }}/custom_detectors.yml"
+        echo "Copying detectors file from $SRC_CONFIG to $CONFIG_PATH"
+        if [ ! -f "$SRC_CONFIG" ]; then
+          echo "::error file=custom_detectors.yml::Custom detectors file not found at $SRC_CONFIG"
+          exit 1
+        fi
+        cp "$SRC_CONFIG" "$CONFIG_PATH"
         echo "Asserting config exists at: $CONFIG_PATH"
         if [ ! -f "$CONFIG_PATH" ]; then
           echo "::error file=custom_detectors.yml::Custom detectors file not found at $CONFIG_PATH"
