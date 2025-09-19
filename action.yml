@@ -40,6 +40,4 @@ runs:
       uses: trufflesecurity/trufflehog@main
       with:
         path: .
-        extra_args: >
-          --results=verified,unknown
-          --config ".github/custom_detectors.yml"
+        extra_args: --results=verified,unknown --config=.github/custom_detectors.yml
