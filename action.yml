@@ -36,8 +36,20 @@ runs:
         GITLEAKS_ENABLE_COMMENTS: "false" # suppress PR comments
         GITLEAKS_ENABLE_SUMMARY:  "false" # suppress Job Summary
 
+    - name: Prepare TruffleHog custom detectors
+      shell: bash
+      run: |
+        echo "Preparing TruffleHog custom detectors config"
+        set -euo pipefail
+        cp "${{ github.action_path }}/custom_detectors.yml" "$GITHUB_WORKSPACE/custom_detectors.yml"
+        mkdir -p "$GITHUB_WORKSPACE/.github"
+        cp "${{ github.action_path }}/custom_detectors.yml" "$GITHUB_WORKSPACE/.github/custom_detectors.yml"
+        echo "TRUFFLEHOG_CONFIG=.github/custom_detectors.yml" >> "$GITHUB_ENV"
+
     - name: TruffleHog 🐽 scanning
       uses: trufflesecurity/trufflehog@main
       with:
         path: .
-        extra_args: --results=verified,unknown --config=.github/custom_detectors.yml
+        extra_args: >
+          --results=verified,unknown
+          --config "${{ github.action_path }}/.github/custom_detectors.yml"
