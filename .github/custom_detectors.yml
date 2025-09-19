@@ -5,7 +5,7 @@ detectors:
       - "postgresql"
     regex:
       jdbc_full: 'jdbc:postgresql://[A-Za-z0-9\.\-_%]+:[0-9]+/[A-Za-z0-9_\-]+'
-    exclude_regexes:
+    exclude_regexes_match:
       - 'jdbc:postgresql://localhost(:[0-9]+)?'
       - 'jdbc:postgresql://db:[0-9]+'
     exclude_words:
