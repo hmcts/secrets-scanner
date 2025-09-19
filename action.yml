@@ -36,7 +36,9 @@ runs:
         GITLEAKS_ENABLE_COMMENTS: "false" # suppress PR comments
         GITLEAKS_ENABLE_SUMMARY:  "false" # suppress Job Summary
 
-    - name: TruffleHog 🐽 scanning
+        - name: TruffleHog 🐽 scanning
       uses: trufflesecurity/trufflehog@main
       with:
-        extra_args: --results=verified,unknown
+        extra_args: >
+          --results=verified,unknown --json
+          --allow-regex "jdbc:postgresql://(localhost|db:5432)"
