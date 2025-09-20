@@ -2,3 +2,5 @@
 
 .DS_Store
 */.DS_Store
+/report-gitleaks.json
+/report-trufflehog.json

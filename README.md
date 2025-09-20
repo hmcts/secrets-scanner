@@ -106,6 +106,26 @@ You can verify that `v1` now points to the latest version by visiting:
 
 Make sure both the full version tag (e.g., `v1.0.1`) and the floating `v1` tag appear, and that `v1` points to the latest commit.
 
+## Local Testing
+
+Install TruffleHog and Gitleaks locally to test the action:
+
+```bash
+brew install gitleaks trufflehog
+```
+
+Then run the following commands in your repository:
+```bash
+gitleaks detect --source . --report-path report-gitleaks.json --redact
+trufflehog filesystem . --results=verified,unknown --json > report-trufflehog.json
+```
+
+Test against the `test_scans` directory to see example output:
+```bash
+gitleaks detect --source test_scans/ --report-path report-gitleaks.json --redact
+trufflehog filesystem test_scans/ --results=verified,unknown --json > report-trufflehog.json
+```
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
