@@ -39,4 +39,4 @@ runs:
     - name: TruffleHog 🐽 scanning
       uses: trufflesecurity/trufflehog@main
       with:
-        extra_args: --results=verified,unknown --json
+        extra_args: --results=verified,unknown
