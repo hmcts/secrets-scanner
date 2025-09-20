@@ -126,6 +126,17 @@ gitleaks detect --source test_scans/ --report-path report-gitleaks.json --redact
 trufflehog filesystem test_scans/ --results=verified,unknown --json > report-trufflehog.json
 ```
 
+## Cleaning commits
+
+Apply the fixes highlighted in the scan.
+
+If the scan is still picking up the issues in the history, then use [BFG Repo Cleaner](https://rtyley.github.io/bfg-repo-cleaner/)
+
+If using macOS and brew:
+```
+brew install bfg
+```
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
