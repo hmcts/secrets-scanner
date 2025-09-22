@@ -8,17 +8,3 @@ id = "internal-urls"
 description = "Identify internal urls"
 regex = '''${GITLEAKS_REGEX_INTERNAL_URL}'''
 tags = ["internal-urls"]
-
-    [rules.allowlist]
-    description = "Ignore known safe URLs"
-    regexes = [
-        '''jdbc:postgresql://localhost''',
-        '''jdbc:postgresql://db:5432''',
-        '''https://example-safe.internal'''
-    ]
-    paths = [
-        '''README.md''',
-        '''docker/docker-compose.integration.yml''',
-        '''src/main/resources/application*.yml''',
-        '''src/main/resources/application*.yaml'''
-    ]
