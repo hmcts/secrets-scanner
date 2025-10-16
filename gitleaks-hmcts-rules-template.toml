@@ -1,0 +1,16 @@
+title = "Custom rules"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "internal-urls"
+description = "Identify internal urls"
+regex = '''${HMCTS_REGEX_INTERNAL_URLS}'''
+tags = ["hmcts-custom-scan"]
+
+[[rules]]
+id = "system-ids"
+description = "Identify internal urls"
+regex = """${HMCTS_REGEX_SYSTEM_IDS}"""
+tags = ["hmcts-custom-scan"]

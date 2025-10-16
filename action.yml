@@ -7,25 +7,58 @@ inputs:
   gitleaks_license:
     required: true
     description: Gitleaks license key to use the licensed version.
-  gitleaks_regex_internal_url:
+  run_hmcts_rules:
+    required: false
+    default: false
+    description: Whether to run with HMCTS custom rules  
+  hmcts_regex_internal_urls:
     required: false
     default: ""
-    description: Regex to identify internal urls
+    description: Regex to identify hmcts internal urls (mandtory when run_hmcts_rules is true)
+  hmcts_regex_system_ids:
+    required: false
+    default: ""
+    description: Regex to identify hmcts system ids (mandtory when run_hmcts_rules is true)
 
 runs:
   using: "composite"
   steps:
-    - name: Prepare Gitleaks config
-      if: ${{ inputs.gitleaks_regex_internal_url != '' }}
+    - name: Validate HMCTS rules inputs
+      if: ${{ inputs.run_hmcts_rules == 'true' }}
       shell: bash
       run: |
-        echo "Executing step: Prepare Gitleaks config"
+        echo "Executing step: Validate HMCTS rules inputs"
         set -euo pipefail
-        export GITLEAKS_REGEX_INTERNAL_URL='${{ inputs.gitleaks_regex_internal_url }}'
-        CUSTOM_CONFIG_FILE="$RUNNER_TEMP/gitleaks-custom-rules.toml"
-        envsubst < "${{ github.action_path }}/gitleaks-custom-rules-template.toml" > "$CUSTOM_CONFIG_FILE"
-        # Set GITLEAKS_CONFIG env variable and make it available to subsequent steps
+        
+        # Validate inputs when run_hmcts_rules is true
+        RAW_REGEX_1='${{ inputs.hmcts_regex_internal_urls }}'
+        RAW_REGEX_2='${{ inputs.hmcts_regex_system_ids }}'
+        # Trim all whitespace/newlines; an "empty" secret sometimes carries a newline
+        REGEX_1="${RAW_REGEX_1//[[:space:]]/}"
+        REGEX_2="${RAW_REGEX_2//[[:space:]]/}"
+        if [ -z "$REGEX_1" ] || [ -z "$REGEX_2" ]; then
+          echo "::error title=Missing value::When run_hmcts_rules is true, hmcts_regex_internal_urls/hmcts_regex_system_ids must be provided and not empty"
+          exit 1
+        fi
+        
+        echo "HMCTS rules inputs validation passed"
+
+    - name: Generate custom Gitleaks config with HMCTS rules
+      if: ${{ inputs.run_hmcts_rules == 'true' }}
+      shell: bash
+      run: |
+        echo "Executing step: Generate custom Gitleaks config"
+        set -euo pipefail
+        
+        # Prepare config file from template
+        export HMCTS_REGEX_INTERNAL_URLS='${{ inputs.hmcts_regex_internal_urls }}'
+        export HMCTS_REGEX_SYSTEM_IDS='${{ inputs.hmcts_regex_system_ids }}'
+        CUSTOM_CONFIG_FILE="$RUNNER_TEMP/gitleaks-hmcts-rules.toml"
+        envsubst < "${{ github.action_path }}/gitleaks-hmcts-rules-template.toml" > "$CUSTOM_CONFIG_FILE"
+        
+        # Set GITLEAKS_CONFIG env variable, for gitleaks to run with prepared custom file
         echo "GITLEAKS_CONFIG=$CUSTOM_CONFIG_FILE" >> "$GITHUB_ENV"
+        
         echo "------------ Scan will run with builtin + custom rules ------------"
 
     - name: Gitleaks scanning
