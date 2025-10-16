@@ -11,6 +11,10 @@ inputs:
     required: false
     default: ""
     description: Regex to identify internal urls
+  gitleaks_regex_system_ids:
+    required: false
+    default: ""
+    description: Regex to identify system ids
 
 runs:
   using: "composite"
@@ -21,11 +25,27 @@ runs:
       run: |
         echo "Executing step: Prepare Gitleaks config"
         set -euo pipefail
+        
+         # Validate inputs
+        RAW_REGEX_1='${{ inputs.gitleaks_regex_internal_url }}'
+        RAW_REGEX_2='${{ inputs.gitleaks_regex_system_ids }}'
+        # Trim all whitespace/newlines; an “empty” secret sometimes carries a newline
+        REGEX_1="${RAW_REGEX_1//[[:space:]]/}"
+        REGEX_2="${RAW_REGEX_2//[[:space:]]/}"
+        if [ -z "$REGEX_1" ] || [ -z "$REGEX_2" ]; then
+          echo "::error title=Missing value::One or more required inputs (gitleaks_regex_internal_url, gitleaks_regex_system_ids) are missing/empty"
+          exit 1
+        fi
+        
+        #Prepare config file from template
         export GITLEAKS_REGEX_INTERNAL_URL='${{ inputs.gitleaks_regex_internal_url }}'
+        export GITLEAKS_REGEX_SYSTEM_IDS='${{ inputs.gitleaks_regex_system_ids }}'
         CUSTOM_CONFIG_FILE="$RUNNER_TEMP/gitleaks-custom-rules.toml"
         envsubst < "${{ github.action_path }}/gitleaks-custom-rules-template.toml" > "$CUSTOM_CONFIG_FILE"
-        # Set GITLEAKS_CONFIG env variable and make it available to subsequent steps
+        
+        # Set GITLEAKS_CONFIG env variable, for gitleaks to run with prepared custom file
         echo "GITLEAKS_CONFIG=$CUSTOM_CONFIG_FILE" >> "$GITHUB_ENV"
+        
         echo "------------ Scan will run with builtin + custom rules ------------"
 
     - name: Gitleaks scanning

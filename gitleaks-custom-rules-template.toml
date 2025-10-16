@@ -7,4 +7,10 @@ useDefault = true
 id = "internal-urls"
 description = "Identify internal urls"
 regex = '''${GITLEAKS_REGEX_INTERNAL_URL}'''
-tags = ["internal-urls"]
+tags = ["custom-scan"]
+
+[[rules]]
+id = "system-ids"
+description = "Identify internal urls"
+regex = """${GITLEAKS_REGEX_SYSTEM_IDS}"""
+tags = ["custom-scan"]
