@@ -13,6 +13,10 @@ prepare_test_workspace() {
   cp ../test_scans/test_system_ids.txt .
   cp ../test_scans/test_builtin_secrets.txt .
   
+  # Copy action files to test workspace
+  cp ../action.yml .
+  cp ../gitleaks-hmcts-rules-template.toml .
+  
   # Initialize git in test workspace to avoid scanning parent repo history
   git init
   git config user.email "test@example.com"
@@ -20,18 +24,17 @@ prepare_test_workspace() {
   git add .
   git commit -m "Test commit"
   
-  # Change back to parent directory so gitleaks runs in test_workspace
+  # Change back to parent directory
   cd ..
 }
 
 # Function to count leaks from Gitleaks report
 count_leaks_from_report() {
-  # Change to test workspace if needed
-  cd test_workspace
-  if [ -f "gitleaks-report.json" ]; then
+  # Report should be in test_workspace directory
+  if [ -f "test_workspace/gitleaks-report.json" ]; then
     # Calculate leak counts
-    CUSTOM_LEAKS=$(jq '[.[] | select(.tags[] | contains("hmcts-custom-scan"))] | length' gitleaks-report.json)
-    BUILTIN_LEAKS=$(jq '[.[] | select(.tags[] | contains("hmcts-custom-scan") | not)] | length' gitleaks-report.json)
+    CUSTOM_LEAKS=$(jq '[.[] | select(.tags[] | contains("hmcts-custom-scan"))] | length' test_workspace/gitleaks-report.json)
+    BUILTIN_LEAKS=$(jq '[.[] | select(.tags[] | contains("hmcts-custom-scan") | not)] | length' test_workspace/gitleaks-report.json)
     
     # Add to GitHub output
     echo "custom_leaks=$CUSTOM_LEAKS" >> $GITHUB_OUTPUT
@@ -42,7 +45,7 @@ count_leaks_from_report() {
     
     # Print full JSON for debugging
     echo "=== GITLEAKS REPORT JSON (for debugging) ==="
-    cat gitleaks-report.json
+    cat test_workspace/gitleaks-report.json
   else
     echo "custom_leaks=0" >> $GITHUB_OUTPUT
     echo "builtin_leaks=0" >> $GITHUB_OUTPUT

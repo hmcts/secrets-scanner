@@ -4,3 +4,6 @@
 */.DS_Store
 /report-gitleaks.json
 /report-trufflehog.json
+
+# Test workspace
+test_workspace/

@@ -214,7 +214,7 @@ jobs:
       - name: Run secrets scanner - run_hmcts_rules_true_with_built_in_and_custom_rules
         id: scan
         continue-on-error: true
-        uses: ./
+        uses: ./test_workspace/action.yml
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
@@ -223,7 +223,6 @@ jobs:
           hmcts_regex_system_ids: "SYS-[0-9]+-[A-Z]+"
         env:
           GITHUB_ACTIONS_ARTIFACT_NAME: "gitleaks-results-custom-and-builtin"
-        working-directory: test_workspace
 
       - name: Count leaks from Gitleaks report
         id: count_leaks
@@ -274,7 +273,7 @@ jobs:
       - name: Run secrets scanner - run_hmcts_rules_false_with_built_in_rules_only
         id: scan
         continue-on-error: true
-        uses: ./
+        uses: ./test_workspace/action.yml
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
@@ -283,7 +282,6 @@ jobs:
           hmcts_regex_system_ids: "SYS-[0-9]+-[A-Z]+"
         env:
           GITHUB_ACTIONS_ARTIFACT_NAME: "gitleaks-results-builtin-only"
-        working-directory: test_workspace
 
       - name: Count leaks from Gitleaks report
         id: count_leaks
