@@ -4,14 +4,16 @@ This document explains how the secrets-scanner GitHub Action testing works.
 
 ## Test Structure
 
-The integration tests use a **matrix strategy** in `.github/workflows/integration-tests.yml` that runs multiple test scenarios in parallel. Each test validates different aspects of the action's behavior.
+The integration tests use **sequential jobs** in `.github/workflows/integration-tests.yml` that run 7 test scenarios one after another. Each test validates different aspects of the action's behavior using shared helper functions.
 
-### Key Test Categories
+### Test Scenarios
 
-1. **Input Validation** - Tests parameter validation and error handling
-2. **Built-in Rules** - Verifies Gitleaks built-in secret detection works
-3. **Custom Rules** - Tests HMCTS-specific regex patterns when enabled
-4. **Leak Counting** - Validates exact number of secrets detected
+1. **Default behavior** - `run_hmcts_rules` not set (built-in rules only)
+2. **Disabled custom rules** - `run_hmcts_rules=false` (built-in rules only)  
+3. **Input validation** - Empty parameters when custom rules enabled
+4. **Custom rules, no leaks** - Valid regex patterns, no secrets found
+5. **Custom + built-in leaks** - Both rule types detect secrets
+6. **Built-in only leaks** - Custom rules disabled, built-in rules detect secrets
 
 ### Test Data
 
@@ -79,5 +81,5 @@ Each test case shows:
 ## References
 
 - [Gitleaks Documentation](https://gitleaks.io/)
-- [GitHub Actions Matrix Strategy](https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs)
+- [GitHub Actions Jobs](https://docs.github.com/en/actions/using-jobs)
 - [TruffleHog Documentation](https://trufflesecurity.com/trufflehog/)
