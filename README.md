@@ -23,6 +23,18 @@ Or the following example will pin to a specific major version:
 - uses: hmcts/secrets-scanner@v1
 ```
 
+### HMCTS Custom Rules
+
+To enable HMCTS-specific custom rules, set `run_hmcts_rules: true` and provide the required regex patterns:
+
+```yaml
+- uses: hmcts/secrets-scanner@main
+  with:
+    run_hmcts_rules: true
+    hmcts_regex_internal_urls: regex1
+    hmcts_regex_system_ids: regex2
+```
+
 ## ✅ Tools Included
 
 - **Gitleaks**: Fast, lightweight secret scanner for git repos
@@ -54,7 +66,9 @@ jobs:
         with:
            github_token: ${{ secrets.GITHUB_TOKEN }}
            gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
-           gitleaks_regex_internal_url: ${{ secrets.GITLEAKS_REGEX_INTERNAL_URL }}
+           run_hmcts_rules: true
+           hmcts_regex_internal_urls: ${{ secrets.HMCTS_REGEX_INTERNAL_URLS }}
+           hmcts_regex_system_ids: ${{ secrets.HMCTS_REGEX_SYSTEM_IDS }}
 ```
 
 ## 🔄 Keeping Up to Date
