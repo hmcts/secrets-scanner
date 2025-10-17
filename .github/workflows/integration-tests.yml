@@ -33,6 +33,8 @@ jobs:
           run_hmcts_rules: ""
           hmcts_regex_internal_urls: ""
           hmcts_regex_system_ids: ""
+        env:
+          GITHUB_ACTIONS_ARTIFACT_NAME: "gitleaks-results-run_hmcts_rules_not_set"
 
       - name: Verify test results - run_hmcts_rules_not_set
         run: |
@@ -67,6 +69,8 @@ jobs:
           run_hmcts_rules: "false"
           hmcts_regex_internal_urls: ""
           hmcts_regex_system_ids: ""
+        env:
+          GITHUB_ACTIONS_ARTIFACT_NAME: "gitleaks-results-run_hmcts_rules_false"
 
       - name: Verify test results - run_hmcts_rules_false
         run: |
@@ -101,6 +105,8 @@ jobs:
           run_hmcts_rules: "true"
           hmcts_regex_internal_urls: ""
           hmcts_regex_system_ids: "test-system-id-regex"
+        env:
+          GITHUB_ACTIONS_ARTIFACT_NAME: "gitleaks-results-empty-internal-urls"
 
       - name: Verify test results - run_hmcts_rules_true_with_empty_internal_urls
         run: |
@@ -135,6 +141,8 @@ jobs:
           run_hmcts_rules: "true"
           hmcts_regex_internal_urls: "test-internal-url-regex"
           hmcts_regex_system_ids: ""
+        env:
+          GITHUB_ACTIONS_ARTIFACT_NAME: "gitleaks-results-empty-system-ids"
 
       - name: Verify test results - run_hmcts_rules_true_with_empty_system_ids
         run: |
@@ -169,6 +177,8 @@ jobs:
           run_hmcts_rules: "true"
           hmcts_regex_internal_urls: "test-internal-url-regex"
           hmcts_regex_system_ids: "test-system-id-regex"
+        env:
+          GITHUB_ACTIONS_ARTIFACT_NAME: "gitleaks-results-valid-regex-no-leaks"
 
       - name: Verify test results - run_hmcts_rules_true_with_valid_regex_no_leaks
         run: |
@@ -211,6 +221,9 @@ jobs:
           run_hmcts_rules: "true"
           hmcts_regex_internal_urls: "https?://internal-[a-zA-Z0-9.-]+\\.example\\.com"
           hmcts_regex_system_ids: "SYS-[0-9]+-[A-Z]+"
+        env:
+          GITHUB_ACTIONS_ARTIFACT_NAME: "gitleaks-results-custom-and-builtin"
+        working-directory: test_workspace
 
       - name: Count leaks from Gitleaks report
         id: count_leaks
@@ -268,6 +281,9 @@ jobs:
           run_hmcts_rules: "false"
           hmcts_regex_internal_urls: "https?://internal-[a-zA-Z0-9.-]+\\.example\\.com"
           hmcts_regex_system_ids: "SYS-[0-9]+-[A-Z]+"
+        env:
+          GITHUB_ACTIONS_ARTIFACT_NAME: "gitleaks-results-builtin-only"
+        working-directory: test_workspace
 
       - name: Count leaks from Gitleaks report
         id: count_leaks

@@ -19,6 +19,9 @@ prepare_test_workspace() {
   git config user.name "Test User"
   git add .
   git commit -m "Test commit"
+  
+  # Change back to parent directory so gitleaks runs in test_workspace
+  cd ..
 }
 
 # Function to count leaks from Gitleaks report
