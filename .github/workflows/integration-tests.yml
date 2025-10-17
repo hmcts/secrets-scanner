@@ -1,0 +1,195 @@
+name: Integration Tests
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'action.yml'
+      - 'gitleaks-hmcts-rules-template.toml'
+      - '.github/workflows/integration-tests.yml'
+      - 'test_scans/test_*.txt'
+
+jobs:
+  test-scenarios:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test-case:
+          - name: "run_hmcts_rules_not_set"
+            description: "Test when run_hmcts_rules is not set"
+            run_hmcts_rules: ""
+            hmcts_regex_internal_urls: ""
+            hmcts_regex_system_ids: ""
+            expected_exit_code: 0
+            expected_behavior: "Should run with built-in rules only"
+            
+          - name: "run_hmcts_rules_false"
+            description: "Test when run_hmcts_rules is set to false"
+            run_hmcts_rules: "false"
+            hmcts_regex_internal_urls: ""
+            hmcts_regex_system_ids: ""
+            expected_exit_code: 0
+            expected_behavior: "Should run with built-in rules only"
+            
+          - name: "run_hmcts_rules_true_with_empty_internal_urls"
+            description: "Test when run_hmcts_rules is true but hmcts_regex_internal_urls is empty"
+            run_hmcts_rules: "true"
+            hmcts_regex_internal_urls: ""
+            hmcts_regex_system_ids: "test-system-id-regex"
+            expected_exit_code: 1
+            expected_behavior: "Should fail validation"
+            
+          - name: "run_hmcts_rules_true_with_empty_system_ids"
+            description: "Test when run_hmcts_rules is true but hmcts_regex_system_ids is empty"
+            run_hmcts_rules: "true"
+            hmcts_regex_internal_urls: "test-internal-url-regex"
+            hmcts_regex_system_ids: ""
+            expected_exit_code: 1
+            expected_behavior: "Should fail validation"
+            
+          - name: "run_hmcts_rules_true_with_valid_regex_no_leaks"
+            description: "Test when run_hmcts_rules is true with valid regex but no leaks found"
+            run_hmcts_rules: "true"
+            hmcts_regex_internal_urls: "test-internal-url-regex"
+            hmcts_regex_system_ids: "test-system-id-regex"
+            expected_exit_code: 0
+            expected_behavior: "Should run successfully with custom rules, no leaks found"
+            
+          - name: "run_hmcts_rules_true__with_built_in_and_custom_rules"
+            description: "Test when run_hmcts_rules is true with valid regex and leaks found (built-in and custom rules)"
+            run_hmcts_rules: "true"
+            hmcts_regex_internal_urls: "https?://internal-[a-zA-Z0-9.-]+\\.example\\.com"
+            hmcts_regex_system_ids: "SYS-[0-9]+-[A-Z]+"
+            expected_exit_code: 1
+            expected_behavior: "Should run successfully with custom rules, leaks found"
+            expected_custom_leaks: 4
+            expected_builtin_leaks: 1
+            use_test_data: true
+            
+          - name: "run_hmcts_rules_false_with_built_in_rules_only"
+            description: "Test when run_hmcts_rules is false - should only detect built-in leaks"
+            run_hmcts_rules: "false"
+            hmcts_regex_internal_urls: "https?://internal-[a-zA-Z0-9.-]+\\.example\\.com"
+            hmcts_regex_system_ids: "SYS-[0-9]+-[A-Z]+"
+            expected_exit_code: 1
+            expected_behavior: "Should run with built-in rules only, detect built-in leaks only"
+            expected_custom_leaks: 0
+            expected_builtin_leaks: 1
+            use_test_data: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare test data
+        if: matrix.test-case.use_test_data == true
+        run: |
+          # Create a clean test directory to avoid scanning commit history
+          mkdir -p test_workspace
+          cd test_workspace
+          
+          # Copy only the specific test files we need
+          cp ../test_scans/test_internal_urls.txt .
+          cp ../test_scans/test_system_ids.txt .
+          cp ../test_scans/test_builtin_secrets.txt .
+          
+          # Initialize git in test workspace to avoid scanning parent repo history
+          git init
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          git add .
+          git commit -m "Test commit"
+
+      - name: Run secrets scanner - ${{ matrix.test-case.name }}
+        id: scan
+        continue-on-error: true
+        working-directory: ${{ matrix.test-case.use_test_data == true && 'test_workspace' || '.' }}
+        uses: ./
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
+          run_hmcts_rules: ${{ matrix.test-case.run_hmcts_rules }}
+          hmcts_regex_internal_urls: ${{ matrix.test-case.hmcts_regex_internal_urls }}
+          hmcts_regex_system_ids: ${{ matrix.test-case.hmcts_regex_system_ids }}
+
+      - name: Count leaks from Gitleaks report
+        if: matrix.test-case.use_test_data == true
+        id: count_leaks
+        working-directory: ${{ matrix.test-case.use_test_data == true && 'test_workspace' || '.' }}
+        run: |
+          if [ -f "gitleaks-report.json" ]; then
+            # Calculate leak counts
+            TOTAL_LEAKS=$(jq length gitleaks-report.json)
+            CUSTOM_LEAKS=$(jq '[.[] | select(.tags[] | contains("hmcts-custom-scan"))] | length' gitleaks-report.json)
+            BUILTIN_LEAKS=$(jq '[.[] | select(.tags[] | contains("hmcts-custom-scan") | not)] | length' gitleaks-report.json)
+            
+            # Add to GitHub output
+            echo "total_leaks=$TOTAL_LEAKS" >> $GITHUB_OUTPUT
+            echo "custom_leaks=$CUSTOM_LEAKS" >> $GITHUB_OUTPUT
+            echo "builtin_leaks=$BUILTIN_LEAKS" >> $GITHUB_OUTPUT
+            
+            # Print summary
+            echo "Leak counts - Total: $TOTAL_LEAKS, Custom: $CUSTOM_LEAKS, Built-in: $BUILTIN_LEAKS"
+            
+            # Print full JSON for debugging
+            echo "=== GITLEAKS REPORT JSON (for debugging) ==="
+            cat gitleaks-report.json
+          else
+            echo "custom_leaks=0" >> $GITHUB_OUTPUT
+            echo "builtin_leaks=0" >> $GITHUB_OUTPUT
+            echo "No Gitleaks report found"
+          fi
+
+
+      - name: Verify test results - ${{ matrix.test-case.name }}
+        run: |
+          echo "Test Case: ${{ matrix.test-case.name }}"
+          echo "Description: ${{ matrix.test-case.description }}"
+          echo "Expected Behavior: ${{ matrix.test-case.expected_behavior }}"
+          echo "Expected Exit Code: ${{ matrix.test-case.expected_exit_code }}"
+          echo "Actual Exit Code: ${{ steps.scan.outcome }}"
+          
+          # Check if the test passed or failed as expected
+          if [ "${{ steps.scan.outcome }}" = "success" ] && [ "${{ matrix.test-case.expected_exit_code }}" = "0" ]; then
+            echo "✅ Test PASSED: Action completed successfully as expected"
+          elif [ "${{ steps.scan.outcome }}" = "failure" ] && [ "${{ matrix.test-case.expected_exit_code }}" = "1" ]; then
+            echo "✅ Test PASSED: Action failed as expected"
+          else
+            echo "❌ Test FAILED: Unexpected result"
+            echo "Expected exit code: ${{ matrix.test-case.expected_exit_code }}"
+            echo "Actual outcome: ${{ steps.scan.outcome }}"
+            exit 1
+          fi
+          
+          # Additional validation for leak detection tests (if expected leak counts are defined)
+          if [ -n "${{ matrix.test-case.expected_custom_leaks }}" ] || [ -n "${{ matrix.test-case.expected_builtin_leaks }}" ]; then
+            echo ""
+            echo "=== LEAK TYPE VALIDATION ==="
+            echo "Expected Custom Rule Leaks: ${{ matrix.test-case.expected_custom_leaks }}"
+            echo "Actual Custom Rule Leaks: ${{ steps.count_leaks.outputs.custom_leaks }}"
+            echo "Expected Built-in Rule Leaks: ${{ matrix.test-case.expected_builtin_leaks }}"            
+            echo "Actual Built-in Rule Leaks: ${{ steps.count_leaks.outputs.builtin_leaks }}"
+            
+            # Validate custom rule leaks (if expected count is defined)
+            if [ -n "${{ matrix.test-case.expected_custom_leaks }}" ]; then
+              if [ "${{ steps.count_leaks.outputs.custom_leaks }}" = "${{ matrix.test-case.expected_custom_leaks }}" ]; then
+                echo "✅ CUSTOM RULE LEAKS VALIDATION PASSED: Found expected ${{ matrix.test-case.expected_custom_leaks }} custom leaks"
+              else
+                echo "❌ CUSTOM RULE LEAKS VALIDATION FAILED: Expected ${{ matrix.test-case.expected_custom_leaks }} custom leaks, found ${{ steps.count_leaks.outputs.custom_leaks }}"
+                exit 1
+              fi
+            fi
+            
+            # Validate built-in rule leaks (if expected count is defined)
+            if [ -n "${{ matrix.test-case.expected_builtin_leaks }}" ]; then
+              if [ "${{ steps.count_leaks.outputs.builtin_leaks }}" = "${{ matrix.test-case.expected_builtin_leaks }}" ]; then
+                echo "✅ BUILT-IN RULE LEAKS VALIDATION PASSED: Found expected ${{ matrix.test-case.expected_builtin_leaks }} built-in leaks"
+              else
+                echo "❌ BUILT-IN RULE LEAKS VALIDATION FAILED: Expected ${{ matrix.test-case.expected_builtin_leaks }} built-in leaks, found ${{ steps.count_leaks.outputs.builtin_leaks }}"
+                exit 1
+              fi
+            fi
+          fi
+

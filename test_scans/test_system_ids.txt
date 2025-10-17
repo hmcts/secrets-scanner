@@ -1,0 +1,12 @@
+# Test file for system IDs
+# These should match the regex: SYS-[0-9]+-[A-Z]+
+
+User system ID: SYS-12345-PROD
+Development system: SYS-67890-DEV
+Testing environment: SYS-11111-TEST
+Staging system: SYS-99999-STAGE
+
+# These should NOT match (different format)
+Invalid format: SYS-ABC-123
+Wrong pattern: SYSTEM-12345-PROD
+Different format: 12345-SYS-PROD
