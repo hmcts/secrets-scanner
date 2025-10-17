@@ -1,0 +1,18 @@
+# Test file with clean code (no secrets)
+# This file should not trigger any secret detection
+
+This is a normal configuration file.
+It contains no secrets or sensitive information.
+
+Database connection string: "Server=localhost;Database=testdb;"
+This is just a connection string template, not a real secret.
+
+API endpoint: "https://api.example.com/v1/data"
+This is a public API endpoint.
+
+Environment variables:
+- NODE_ENV=development
+- PORT=3000
+- LOG_LEVEL=info
+
+These are just configuration values, not secrets.

@@ -35,6 +35,13 @@ To enable HMCTS-specific custom rules, set `run_hmcts_rules: true` and provide t
     hmcts_regex_system_ids: regex2
 ```
 
+#### Inputs
+
+- `run_hmcts_rules` (boolean, default `false`): When `true`, runs with HMCTS custom rules in addition to built-in rules. Requires both regex inputs below.
+- `hmcts_regex_internal_urls` (string): Regex for internal URLs; required only if `run_hmcts_rules=true`.
+- `hmcts_regex_system_ids` (string): Regex for system IDs; required only if `run_hmcts_rules=true`.
+- `test_mode` (string `"true"|"false"`, default `"false"`): Internal testing switch. When `true`, the action runs Gitleaks via Docker against a test workspace used by integration tests. Not intended for client repos.
+
 ## ✅ Tools Included
 
 - **Gitleaks**: Fast, lightweight secret scanner for git repos

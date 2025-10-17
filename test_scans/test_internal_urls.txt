@@ -1,0 +1,11 @@
+# Test file for internal URLs
+# These should match the regex: https?://internal-[a-zA-Z0-9.-]+\.example\.com
+
+Internal API endpoint: https://internal-test.example.com/api/v1/users
+Development server: http://internal-dev.example.com:8080
+Staging environment: https://internal-staging.example.com/dashboard
+Production API: https://internal-prod.example.com/graphql
+
+# These should NOT match (different domains)
+External API: https://api.external-service.com
+Public endpoint: https://public.example.com

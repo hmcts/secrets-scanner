@@ -1,0 +1,261 @@
+name: Integration Tests
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'action.yml'
+      - 'gitleaks-hmcts-rules-template.toml'
+      - '.github/workflows/integration-tests.yml'
+      - 'test_scans/test_*.txt'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  test-run_hmcts_rules_not_set:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_ACTIONS_ARTIFACT_NAME: gitleaks-results-run_hmcts_rules_not_set
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare empty test workspace
+        run: |
+          source .github/scripts/test-helpers.sh
+          prepare_empty_test_workspace
+
+      - name: Run secrets scanner - run_hmcts_rules_not_set
+        id: scan
+        continue-on-error: true
+        uses: ./
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
+          run_hmcts_rules: ""
+          hmcts_regex_internal_urls: ""
+          hmcts_regex_system_ids: ""
+          test_mode: "true"
+
+      - name: Verify test results - run_hmcts_rules_not_set
+        run: |
+          echo "Test Case: run_hmcts_rules_not_set"
+          echo "Description: Test when run_hmcts_rules is not set"
+          echo "Expected Behavior: Should run with built-in rules only"
+          echo "Expected Exit Code: 0"
+          echo "Actual Exit Code: ${{ steps.scan.outcome }}"
+          if [ "${{ steps.scan.outcome }}" = "success" ]; then
+            echo "✅ Test PASSED: Action completed successfully as expected"
+          else
+            echo "❌ Test FAILED: Expected success but got ${{ steps.scan.outcome }}"
+            exit 1
+          fi
+
+  test-run_hmcts_rules_true_with_empty_internal_urls:
+    needs: [test-run_hmcts_rules_not_set]
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_ACTIONS_ARTIFACT_NAME: gitleaks-results-empty-internal-urls
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run secrets scanner - run_hmcts_rules_true_with_empty_internal_urls
+        id: scan
+        continue-on-error: true
+        uses: ./
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
+          run_hmcts_rules: "true"
+          hmcts_regex_internal_urls: ""
+          hmcts_regex_system_ids: "test-system-id-regex"
+          test_mode: "true"
+
+      - name: Verify test results - run_hmcts_rules_true_with_empty_internal_urls
+        run: |
+          echo "Test Case: run_hmcts_rules_true_with_empty_internal_urls"
+          echo "Description: Test when run_hmcts_rules is true but hmcts_regex_internal_urls is empty"
+          echo "Expected Behavior: Should fail validation"
+          echo "Expected Exit Code: 1"
+          echo "Actual Exit Code: ${{ steps.scan.outcome }}"
+          if [ "${{ steps.scan.outcome }}" = "failure" ]; then
+            echo "✅ Test PASSED: Action failed as expected"
+          else
+            echo "❌ Test FAILED: Expected failure but got ${{ steps.scan.outcome }}"
+            exit 1
+          fi
+
+  test-run_hmcts_rules_true_with_empty_system_ids:
+    needs: [test-run_hmcts_rules_true_with_empty_internal_urls]
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_ACTIONS_ARTIFACT_NAME: gitleaks-results-empty-system-ids
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run secrets scanner - run_hmcts_rules_true_with_empty_system_ids
+        id: scan
+        continue-on-error: true
+        uses: ./
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
+          run_hmcts_rules: "true"
+          hmcts_regex_internal_urls: "test-internal-url-regex"
+          hmcts_regex_system_ids: ""
+          test_mode: "true"
+
+      - name: Verify test results - run_hmcts_rules_true_with_empty_system_ids
+        run: |
+          echo "Test Case: run_hmcts_rules_true_with_empty_system_ids"
+          echo "Description: Test when run_hmcts_rules is true but hmcts_regex_system_ids is empty"
+          echo "Expected Behavior: Should fail validation"
+          echo "Expected Exit Code: 1"
+          echo "Actual Exit Code: ${{ steps.scan.outcome }}"
+          if [ "${{ steps.scan.outcome }}" = "failure" ]; then
+            echo "✅ Test PASSED: Action failed as expected"
+          else
+            echo "❌ Test FAILED: Expected failure but got ${{ steps.scan.outcome }}"
+            exit 1
+          fi
+
+  test-run_hmcts_rules_true_with_valid_regex_no_leaks:
+    needs: [test-run_hmcts_rules_true_with_empty_system_ids]
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_ACTIONS_ARTIFACT_NAME: gitleaks-results-valid-regex-no-leaks
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare empty test workspace
+        run: |
+          source .github/scripts/test-helpers.sh
+          prepare_empty_test_workspace
+
+      - name: Run secrets scanner - run_hmcts_rules_true_with_valid_regex_no_leaks
+        id: scan
+        continue-on-error: true
+        uses: ./
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
+          run_hmcts_rules: "true"
+          hmcts_regex_internal_urls: "test-internal-url-regex"
+          hmcts_regex_system_ids: "test-system-id-regex"
+          test_mode: "true"
+
+      - name: Verify test results - run_hmcts_rules_true_with_valid_regex_no_leaks
+        run: |
+          echo "Test Case: run_hmcts_rules_true_with_valid_regex_no_leaks"
+          echo "Description: Test when run_hmcts_rules is true with valid regex but no leaks found"
+          echo "Expected Behavior: Should run successfully with custom rules, no leaks found"
+          echo "Expected Exit Code: 0"
+          echo "Actual Exit Code: ${{ steps.scan.outcome }}"
+          if [ "${{ steps.scan.outcome }}" = "success" ]; then
+            echo "✅ Test PASSED: Action completed successfully as expected"
+          else
+            echo "❌ Test FAILED: Expected success but got ${{ steps.scan.outcome }}"
+            exit 1
+          fi
+
+  test-run_hmcts_rules_true_with_built_in_and_custom_rules:
+    needs: [test-run_hmcts_rules_true_with_valid_regex_no_leaks]
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_ACTIONS_ARTIFACT_NAME: gitleaks-results-custom-and-builtin
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare test data
+        run: |
+          source .github/scripts/test-helpers.sh
+          prepare_test_workspace
+
+      - name: Run secrets scanner - run_hmcts_rules_true_with_built_in_and_custom_rules
+        id: scan
+        continue-on-error: true
+        uses: ./
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
+          run_hmcts_rules: "true"
+          hmcts_regex_internal_urls: "https?://internal-[a-zA-Z0-9.-]+\\.example\\.com"
+          hmcts_regex_system_ids: "SYS-[0-9]+-[A-Z]+"
+          test_mode: "true"
+
+      - name: Count leaks from Gitleaks report
+        id: count_leaks
+        run: |
+          source .github/scripts/test-helpers.sh
+          count_leaks_from_report
+
+      - name: Verify test results - run_hmcts_rules_true_with_built_in_and_custom_rules
+        run: |
+          echo "Test Case: run_hmcts_rules_true_with_built_in_and_custom_rules"
+          echo "Description: Test when run_hmcts_rules is true with valid regex and leaks found (built-in and custom rules)"
+          echo "Expected Behavior: Should detect built-in and custom leaks"
+          echo "Note: Skipping outcome check in test mode; validating via leak counts only"
+
+          source .github/scripts/test-helpers.sh
+          validate_leak_counts 8 3
+
+  test-run_hmcts_rules_false_with_built_in_rules_only:
+    needs: [test-run_hmcts_rules_true_with_built_in_and_custom_rules]
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_ACTIONS_ARTIFACT_NAME: gitleaks-results-builtin-only
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare test data
+        run: |
+          source .github/scripts/test-helpers.sh
+          prepare_test_workspace
+
+      - name: Run secrets scanner - run_hmcts_rules_false_with_built_in_rules_only
+        id: scan
+        continue-on-error: true
+        uses: ./
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
+          run_hmcts_rules: "false"
+          hmcts_regex_internal_urls: "https?://internal-[a-zA-Z0-9.-]+\\.example\\.com"
+          hmcts_regex_system_ids: "SYS-[0-9]+-[A-Z]+"
+          test_mode: "true"
+
+      - name: Count leaks from Gitleaks report
+        id: count_leaks
+        run: |
+          source .github/scripts/test-helpers.sh
+          count_leaks_from_report
+
+      - name: Verify test results - run_hmcts_rules_false_with_built_in_rules_only
+        run: |
+          echo "Test Case: run_hmcts_rules_false_with_built_in_rules_only"
+          echo "Description: Test when run_hmcts_rules is false - should only detect built-in leaks"
+          echo "Expected Behavior: Should run with built-in rules only, detect built-in leaks only"
+          echo "Note: Skipping outcome check in test mode; validating via leak counts only"
+
+          source .github/scripts/test-helpers.sh
+          validate_leak_counts 0 3
