@@ -7,26 +7,50 @@ inputs:
   gitleaks_license:
     required: true
     description: Gitleaks license key to use the licensed version.
-  gitleaks_regex_internal_url:
+  gitleaks_config_contents:
     required: false
     default: ""
-    description: Regex to identify internal urls
+    description: Full contents of a gitleaks config file (multiline)
+  gitleaks_config_vars:
+    required: false
+    default: ""
+    description: JSON object containing key/value pairs for template substitution
+  gitleaks_extend_config:
+    required: false
+    default: "false"
+    description: Set to true to add "[extend] useDefault = true" to the generated config
 
 runs:
   using: "composite"
   steps:
-    - name: Prepare Gitleaks config
-      if: ${{ inputs.gitleaks_regex_internal_url != '' }}
+    - name: Create gitleaks config
       shell: bash
+      env:
+        DEFAULT_TEMPLATE_PATH: "${{ github.action_path }}/gitleaks-custom-rules-template.toml"
+        EXTEND_CONFIG: "${{ inputs.gitleaks_extend_config }}"
       run: |
-        echo "Executing step: Prepare Gitleaks config"
         set -euo pipefail
-        export GITLEAKS_REGEX_INTERNAL_URL='${{ inputs.gitleaks_regex_internal_url }}'
+        
         CUSTOM_CONFIG_FILE="$RUNNER_TEMP/gitleaks-custom-rules.toml"
-        envsubst < "${{ github.action_path }}/gitleaks-custom-rules-template.toml" > "$CUSTOM_CONFIG_FILE"
-        # Set GITLEAKS_CONFIG env variable and make it available to subsequent steps
-        echo "GITLEAKS_CONFIG=$CUSTOM_CONFIG_FILE" >> "$GITHUB_ENV"
-        echo "------------ Scan will run with builtin + custom rules ------------"
+        CONFIG_CONTENTS_FILE="$(mktemp)"
+        CONFIG_VARS_FILE="$(mktemp)"
+        
+        python3 ${{ github.action_path }}/build_gitleaks_config.py \
+          --output "$CUSTOM_CONFIG_FILE" \
+          --template "$DEFAULT_TEMPLATE_PATH" \
+          --contents "$CONFIG_CONTENTS_FILE" \
+          --vars "$CONFIG_VARS_FILE" \
+          --extend "$EXTEND_CONFIG"
+        
+        rm -f "$CONFIG_CONTENTS_FILE" "$CONFIG_VARS_FILE"
+
+        if [ -s "$CUSTOM_CONFIG_FILE" ]; then
+          echo "GITLEAKS_CONFIG=$CUSTOM_CONFIG_FILE" >> "$GITHUB_ENV"
+          echo "------------ Scan will run with generated custom config ------------"
+        else
+          rm -f "$CUSTOM_CONFIG_FILE"
+          echo "------------ No custom config generated ------------"
+        fi
 
     - name: Gitleaks scanning
       uses: gitleaks/gitleaks-action@v2

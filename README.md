@@ -28,7 +28,9 @@ Or the following example will pin to a specific major version:
 - **Gitleaks**: Fast, lightweight secret scanner for git repos
 - **TruffleHog**: Finds secrets via regex and entropy analysis
 
-## 📂 Example Workflow
+## 📂 Configuration
+
+The Action requires a GitHub token and a Gitleaks license key to run.
 
 ```yaml
 name: Scan for Secrets
@@ -54,8 +56,43 @@ jobs:
         with:
            github_token: ${{ secrets.GITHUB_TOKEN }}
            gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
-           gitleaks_regex_internal_url: ${{ secrets.GITLEAKS_REGEX_INTERNAL_URL }}
 ```
+
+### Advanced configuration
+
+Optional inputs let you customise how Gitleaks runs:
+
+- `gitleaks_extend_config`: set to `true` to keep the built-in rules (`[extend] useDefault = true`).
+- `gitleaks_config_vars`: JSON string mapping placeholder names to replacement values for `gitleaks-custom-rules-template.toml`.
+- `gitleaks_config_contents`: full TOML contents that replace the bundled template.
+
+Example: reuse the bundled template but override placeholders:
+
+```yaml
+- uses: hmcts/secrets-scanner@v1
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
+    gitleaks_extend_config: 'true'
+    gitleaks_config_vars: '{"GITLEAKS_REGEX_INTERNAL_URL": "https://internal\\.hmcts\\.net"}'
+```
+
+Or replace the entire config using a multiline secret:
+
+```yaml
+- uses: hmcts/secrets-scanner@v1
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
+    gitleaks_config_contents: |
+      title = "ACME Rules"
+      [[rules]]
+      id = "acme-token"
+      regex = '''acme_[0-9a-f]{32}'''
+      tags = ["acme"]
+```
+
+When both `gitleaks_config_contents` and `gitleaks_config_vars` are provided, the extend block (when enabled) comes first, inline contents are appended next, and the templated output is appended last.
 
 ## 🔄 Keeping Up to Date
 

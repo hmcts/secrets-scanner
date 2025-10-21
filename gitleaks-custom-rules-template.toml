@@ -1,7 +1,4 @@
-title = "Custom rules"
-
-[extend]
-useDefault = true
+title = "Default custom rules"
 
 [[rules]]
 id = "internal-urls"
