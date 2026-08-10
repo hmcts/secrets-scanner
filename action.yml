@@ -11,6 +11,14 @@ inputs:
     required: false
     default: ""
     description: Regex to identify internal urls
+  trufflehog_exclude_detectors:
+    required: false
+    default: ""
+    description: >
+      Comma-separated TruffleHog detectors to disable for this repository, e.g.
+      "lob" for a provider it does not use. Affects TruffleHog only; gitleaks is
+      unchanged. Accepts letters, digits, underscores, commas and hyphens only, so
+      this input cannot be used to pass other arguments to the scanner.
 
 runs:
   using: "composite"
@@ -36,7 +44,31 @@ runs:
         GITLEAKS_ENABLE_COMMENTS: "false" # suppress PR comments
         GITLEAKS_ENABLE_SUMMARY:  "false" # suppress Job Summary
 
+    - name: Compose TruffleHog arguments
+      id: trufflehog_args
+      shell: bash
+      env:
+        # Passed through the environment rather than interpolated into the script:
+        # a workflow input reaching a shell directly is a command-injection seam,
+        # and this action is a security control.
+        EXCLUDE_DETECTORS: ${{ inputs.trufflehog_exclude_detectors }}
+      run: |
+        set -euo pipefail
+        args="--results=verified"
+        if [ -n "$EXCLUDE_DETECTORS" ]; then
+          # Detector names only. Without this check a caller could append arbitrary
+          # flags - --no-verification, or --results=all - and weaken the scan
+          # through an input that reads like a narrow one.
+          if ! printf '%s' "$EXCLUDE_DETECTORS" | grep -Eq '^[A-Za-z0-9_,-]+$'; then
+            echo "::error::trufflehog_exclude_detectors must be a comma-separated list of detector names (letters, digits, underscores, hyphens). Refusing to run rather than passing it through."
+            exit 1
+          fi
+          args="$args --exclude-detectors=$EXCLUDE_DETECTORS"
+          echo "::notice::TruffleHog detectors disabled for this repository: $EXCLUDE_DETECTORS"
+        fi
+        echo "extra_args=$args" >> "$GITHUB_OUTPUT"
+
     - name: TruffleHog 🐽 scanning
       uses: trufflesecurity/trufflehog@main
       with:
-        extra_args: --results=verified
+        extra_args: ${{ steps.trufflehog_args.outputs.extra_args }}

@@ -57,6 +57,45 @@ jobs:
            gitleaks_regex_internal_url: ${{ secrets.GITLEAKS_REGEX_INTERNAL_URL }}
 ```
 
+## ⚙️ Inputs
+
+| Input | Required | Default | Purpose |
+|---|---|---|---|
+| `github_token` | yes | — | Token for repository access and comments |
+| `gitleaks_license` | yes | — | Licensed gitleaks |
+| `gitleaks_regex_internal_url` | no | `""` | Regex identifying internal URLs, added to the gitleaks rules |
+| `trufflehog_exclude_detectors` | no | `""` | Comma-separated TruffleHog detectors to disable for this repository |
+
+### Disabling a TruffleHog detector
+
+Some detectors match strings that cannot be credentials in a given repository. The
+clearest example: TruffleHog's `Lob` detector matches `test_` followed by 35 word
+characters — the shape of a Lob test key — so an ordinary Python test name is
+reported as a **verified** credential and fails the build (see issue #44).
+
+Where a provider genuinely does not apply, a repository can turn that detector off
+without weakening the rest of the scan:
+
+```yaml
+- uses: hmcts/secrets-scanner@v1
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
+    trufflehog_exclude_detectors: lob
+```
+
+Two deliberate limits:
+
+- **Detector names only.** The input accepts letters, digits, underscores, commas
+  and hyphens, and the action fails if given anything else. That is what stops it
+  becoming a general argument passthrough, through which `--no-verification` or
+  `--results=all` could quietly weaken the gate.
+- **gitleaks is untouched.** Only TruffleHog's detector set changes, so a secret
+  the other scanner would catch is still caught.
+
+Each exclusion is visible in the workflow file and echoed as a notice in the run
+log, so it stays reviewable rather than becoming invisible configuration.
+
 ## 🔄 Keeping Up to Date
 
 This Action centralises improvements so teams benefit automatically from:
