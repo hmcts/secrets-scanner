@@ -64,17 +64,16 @@ jobs:
 | `github_token` | yes | — | Token for repository access and comments |
 | `gitleaks_license` | yes | — | Licensed gitleaks |
 | `gitleaks_regex_internal_url` | no | `""` | Regex identifying internal URLs, added to the gitleaks rules |
-| `trufflehog_exclude_detectors` | no | `""` | Comma-separated TruffleHog detectors to disable for this repository |
+| `trufflehog_exclude_detectors` | no | `""` | Comma-separated TruffleHog detectors to disable. Requires the input below |
+| `trufflehog_exclude_detectors_in` | no | `""` | Paths the exclusion applies to, one regex per line. Everything else is still scanned by every detector |
 
-### Disabling a TruffleHog detector
+### Disabling a TruffleHog detector, within named paths
 
-Some detectors match strings that cannot be credentials in a given repository. The
-clearest example: TruffleHog's `Lob` detector matches `test_` followed by 35 word
-characters — the shape of a Lob test key — so an ordinary Python test name is
-reported as a **verified** credential and fails the build (see issue #44).
+Some detectors match strings that cannot be credentials. The clearest example: TruffleHog's `Lob`
+detector matches `test_` followed by 35 word characters, so an ordinary Python test name is reported
+as a **verified** credential and fails the build (issue #44).
 
-Where a provider genuinely does not apply, a repository can turn that detector off
-without weakening the rest of the scan:
+A detector can be disabled **within paths you name**, never repository-wide:
 
 ```yaml
 - uses: hmcts/secrets-scanner@v1
@@ -82,19 +81,30 @@ without weakening the rest of the scan:
     github_token: ${{ secrets.GITHUB_TOKEN }}
     gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
     trufflehog_exclude_detectors: lob
+    trufflehog_exclude_detectors_in: |
+      (^|/)tests?/
+      (^|/)test_scans/
 ```
 
-Two deliberate limits:
+`trufflehog_exclude_detectors` on its own **fails the run**. That is deliberate: turning a detector
+off everywhere means a credential introduced later in application code goes unreported, and nothing
+in the run says so. Naming the paths keeps the dismissal where the false positive lives.
 
-- **Detector names only.** The input accepts letters, digits, underscores, commas
-  and hyphens, and the action fails if given anything else. That is what stops it
-  becoming a general argument passthrough, through which `--no-verification` or
-  `--results=all` could quietly weaken the gate.
-- **gitleaks is untouched.** Only TruffleHog's detector set changes, so a secret
-  the other scanner would catch is still caught.
+How it works: TruffleHog runs twice. Once over everything *outside* those paths with every detector
+enabled, and once over the paths themselves with the named detectors off. Either run failing fails
+the job, so a real credential in application code is still caught while the test fixture is not
+reported.
 
-Each exclusion is visible in the workflow file and echoed as a notice in the run
-log, so it stays reviewable rather than becoming invisible configuration.
+Two further limits:
+
+- **Detector names only.** The input accepts letters, digits, underscores, commas and hyphens, and
+  the action fails otherwise. That is what stops it becoming a general argument passthrough, through
+  which `--no-verification` or `--results=all` could quietly weaken the gate.
+- **gitleaks is untouched.** Only TruffleHog's detector set changes, so anything the other scanner
+  catches is still caught.
+
+Each exclusion is visible in the caller's workflow file, the scope is printed in the run log, and a
+notice names the detectors disabled and where.
 
 ## 🔄 Keeping Up to Date
 
