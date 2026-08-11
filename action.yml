@@ -15,10 +15,18 @@ inputs:
     required: false
     default: ""
     description: >
-      Comma-separated TruffleHog detectors to disable for this repository, e.g.
-      "lob" for a provider it does not use. Affects TruffleHog only; gitleaks is
-      unchanged. Accepts letters, digits, underscores, commas and hyphens only, so
-      this input cannot be used to pass other arguments to the scanner.
+      Comma-separated TruffleHog detectors to disable, e.g. "lob". Requires
+      trufflehog_exclude_detectors_in - a detector cannot be disabled repository-wide,
+      only within named paths. Affects TruffleHog only; gitleaks is unchanged. Accepts
+      letters, digits, underscores, commas and hyphens only, so this input cannot be
+      used to pass other arguments to the scanner.
+  trufflehog_exclude_detectors_in:
+    required: false
+    default: ""
+    description: >
+      Where trufflehog_exclude_detectors applies, as one regex per line matching
+      paths, e.g. "(^|/)tests?/". Everything outside these paths is still scanned by
+      every detector, so a credential introduced in application code is still caught.
 
 runs:
   using: "composite"
@@ -48,27 +56,76 @@ runs:
       id: trufflehog_args
       shell: bash
       env:
-        # Passed through the environment rather than interpolated into the script:
-        # a workflow input reaching a shell directly is a command-injection seam,
+        # Through the environment rather than interpolated into the script: a
+        # workflow input reaching a shell directly is a command-injection seam,
         # and this action is a security control.
         EXCLUDE_DETECTORS: ${{ inputs.trufflehog_exclude_detectors }}
+        EXCLUDE_DETECTORS_IN: ${{ inputs.trufflehog_exclude_detectors_in }}
       run: |
         set -euo pipefail
-        args="--results=verified"
-        if [ -n "$EXCLUDE_DETECTORS" ]; then
-          # Detector names only. Without this check a caller could append arbitrary
-          # flags - --no-verification, or --results=all - and weaken the scan
-          # through an input that reads like a narrow one.
-          if ! printf '%s' "$EXCLUDE_DETECTORS" | grep -Eq '^[A-Za-z0-9_,-]+$'; then
-            echo "::error::trufflehog_exclude_detectors must be a comma-separated list of detector names (letters, digits, underscores, hyphens). Refusing to run rather than passing it through."
+        base="--results=verified"
+
+        # Each output key is written exactly once. Writing `scoped` twice and relying
+        # on the later value winning is the kind of thing that behaves differently in
+        # the runner than in a shell.
+        if [ -z "$EXCLUDE_DETECTORS" ]; then
+          if [ -n "$EXCLUDE_DETECTORS_IN" ]; then
+            echo "::error::trufflehog_exclude_detectors_in was given without trufflehog_exclude_detectors, so it would do nothing. Remove it, or name the detectors to disable."
             exit 1
           fi
-          args="$args --exclude-detectors=$EXCLUDE_DETECTORS"
-          echo "::notice::TruffleHog detectors disabled for this repository: $EXCLUDE_DETECTORS"
+          {
+            echo "scoped=false"
+            echo "base_args=$base"
+          } >> "$GITHUB_OUTPUT"
+          exit 0
         fi
-        echo "extra_args=$args" >> "$GITHUB_OUTPUT"
 
+        # Detector names only. Without this check a caller could append arbitrary
+        # flags - --no-verification, or --results=all - and weaken the scan through
+        # an input that reads like a narrow one.
+        if ! printf '%s' "$EXCLUDE_DETECTORS" | grep -Eq '^[A-Za-z0-9_,-]+$'; then
+          echo "::error::trufflehog_exclude_detectors must be a comma-separated list of detector names (letters, digits, underscores, hyphens). Refusing to run rather than passing it through."
+          exit 1
+        fi
+
+        # A detector cannot be turned off repository-wide. Disabling one everywhere
+        # means a credential introduced later in application code goes unreported,
+        # and nothing in the run says so. Naming the paths keeps the dismissal where
+        # the false positive is - usually test fixtures - and leaves the rest of the
+        # tree scanned by everything.
+        if [ -z "$EXCLUDE_DETECTORS_IN" ]; then
+          echo "::error::trufflehog_exclude_detectors requires trufflehog_exclude_detectors_in. A detector can be disabled within named paths, not repository-wide: set trufflehog_exclude_detectors_in to the paths the false positive lives in, for example '(^|/)tests?/'."
+          exit 1
+        fi
+
+        scope="$GITHUB_WORKSPACE/.trufflehog-exclusion-scope"
+        printf '%s\n' "$EXCLUDE_DETECTORS_IN" > "$scope"
+        echo "----- detector exclusion is scoped to these paths -----"
+        cat "$scope"
+        echo "::notice::TruffleHog detectors $EXCLUDE_DETECTORS are disabled only within the paths listed in .trufflehog-exclusion-scope; the rest of the tree is scanned by every detector."
+        {
+          echo "scoped=true"
+          echo "outside_args=$base --exclude-paths=.trufflehog-exclusion-scope"
+          echo "inside_args=$base --include-paths=.trufflehog-exclusion-scope --exclude-detectors=$EXCLUDE_DETECTORS"
+        } >> "$GITHUB_OUTPUT"
+
+    # One run when nothing is excluded - the original behaviour, unchanged.
     - name: TruffleHog 🐽 scanning
+      if: ${{ steps.trufflehog_args.outputs.scoped != 'true' }}
       uses: trufflesecurity/trufflehog@main
       with:
-        extra_args: ${{ steps.trufflehog_args.outputs.extra_args }}
+        extra_args: ${{ steps.trufflehog_args.outputs.base_args }}
+
+    # Two runs when a detector is excluded within named paths, so the exclusion
+    # cannot reach the rest of the tree. Both steps fail the job on a finding.
+    - name: TruffleHog 🐽 scanning (outside the exclusion scope, all detectors)
+      if: ${{ steps.trufflehog_args.outputs.scoped == 'true' }}
+      uses: trufflesecurity/trufflehog@main
+      with:
+        extra_args: ${{ steps.trufflehog_args.outputs.outside_args }}
+
+    - name: TruffleHog 🐽 scanning (inside the exclusion scope)
+      if: ${{ steps.trufflehog_args.outputs.scoped == 'true' }}
+      uses: trufflesecurity/trufflehog@main
+      with:
+        extra_args: ${{ steps.trufflehog_args.outputs.inside_args }}
