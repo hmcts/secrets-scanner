@@ -27,6 +27,17 @@ inputs:
       Where trufflehog_exclude_detectors applies, as one regex per line matching
       paths, e.g. "(^|/)tests?/". Everything outside these paths is still scanned by
       every detector, so a credential introduced in application code is still caught.
+  trufflehog_allowlist:
+    required: false
+    default: ""
+    description: >
+      Path to a file retiring individual TruffleHog findings by fingerprint, one per
+      line as "<64-hex fingerprint>  <reason>". Use this where a path-scoped detector
+      exclusion cannot reach - most importantly a false positive in a commit message,
+      which has no path. The fingerprint identifies one finding, so this cannot disable
+      a detector or a directory; every entry must give a reason; and an entry that
+      matches nothing is reported, because an unpruned allowlist becomes blindness.
+      Unset by default, and the scan behaves exactly as before when unset.
 
 runs:
   using: "composite"
@@ -109,9 +120,13 @@ runs:
           echo "inside_args=$base --include-paths=.trufflehog-exclusion-scope --exclude-detectors=$EXCLUDE_DETECTORS"
         } >> "$GITHUB_OUTPUT"
 
+    # Without an allowlist the upstream action runs as it always has, and decides
+    # pass or fail itself. That is the path almost every caller takes, so it is
+    # left exactly as it was.
+
     # One run when nothing is excluded - the original behaviour, unchanged.
     - name: TruffleHog 🐽 scanning
-      if: ${{ steps.trufflehog_args.outputs.scoped != 'true' }}
+      if: ${{ steps.trufflehog_args.outputs.scoped != 'true' && inputs.trufflehog_allowlist == '' }}
       uses: trufflesecurity/trufflehog@main
       with:
         extra_args: ${{ steps.trufflehog_args.outputs.base_args }}
@@ -119,13 +134,69 @@ runs:
     # Two runs when a detector is excluded within named paths, so the exclusion
     # cannot reach the rest of the tree. Both steps fail the job on a finding.
     - name: TruffleHog 🐽 scanning (outside the exclusion scope, all detectors)
-      if: ${{ steps.trufflehog_args.outputs.scoped == 'true' }}
+      if: ${{ steps.trufflehog_args.outputs.scoped == 'true' && inputs.trufflehog_allowlist == '' }}
       uses: trufflesecurity/trufflehog@main
       with:
         extra_args: ${{ steps.trufflehog_args.outputs.outside_args }}
 
     - name: TruffleHog 🐽 scanning (inside the exclusion scope)
-      if: ${{ steps.trufflehog_args.outputs.scoped == 'true' }}
+      if: ${{ steps.trufflehog_args.outputs.scoped == 'true' && inputs.trufflehog_allowlist == '' }}
       uses: trufflesecurity/trufflehog@main
       with:
         extra_args: ${{ steps.trufflehog_args.outputs.inside_args }}
+
+    # With an allowlist the scan has to be run here rather than delegated, because
+    # the upstream action fails the step on any finding and exposes no results to
+    # inspect - there is nowhere to apply a per-finding decision. Same image, same
+    # arguments; the only differences are --json, and that the verdict is made by
+    # the filter instead of by exit code alone.
+    - name: TruffleHog 🐽 scanning (allowlist applied per finding)
+      if: ${{ inputs.trufflehog_allowlist != '' }}
+      shell: bash
+      env:
+        # Through the environment, not interpolated: see the note above.
+        ALLOWLIST: ${{ inputs.trufflehog_allowlist }}
+        SCOPED: ${{ steps.trufflehog_args.outputs.scoped }}
+        BASE_ARGS: ${{ steps.trufflehog_args.outputs.base_args }}
+        OUTSIDE_ARGS: ${{ steps.trufflehog_args.outputs.outside_args }}
+        INSIDE_ARGS: ${{ steps.trufflehog_args.outputs.inside_args }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        set -euo pipefail
+
+        # A path, not a shell fragment. Refuse rather than pass it through.
+        if ! printf '%s' "$ALLOWLIST" | grep -Eq '^[A-Za-z0-9._/-]+$'; then
+          echo "::error::trufflehog_allowlist must be a plain relative path (letters, digits, dot, underscore, hyphen, slash). Refusing to run rather than passing it through."
+          exit 1
+        fi
+        case "$ALLOWLIST" in
+          /*|*..*) echo "::error::trufflehog_allowlist must be a relative path inside the repository, with no '..' segments."; exit 1 ;;
+        esac
+        if [ ! -f "$GITHUB_WORKSPACE/$ALLOWLIST" ]; then
+          echo "::error::trufflehog_allowlist names $ALLOWLIST, which is not a file in this repository."
+          exit 1
+        fi
+
+        image="ghcr.io/trufflesecurity/trufflehog:latest"
+        docker pull -q "$image"
+
+        findings="$RUNNER_TEMP/trufflehog-findings.json"
+        : > "$findings"
+
+        scan() {
+          # --no-fail because the verdict belongs to the filter: a finding that is
+          # allowlisted must not fail the job, and exit code alone cannot say which.
+          # shellcheck disable=SC2086
+          docker run --rm -v "$GITHUB_WORKSPACE:/pwd" -w /pwd "$image" \
+            git file:///pwd $1 --json --no-fail >> "$findings"
+        }
+
+        if [ "$SCOPED" = "true" ]; then
+          scan "$OUTSIDE_ARGS"
+          scan "$INSIDE_ARGS"
+        else
+          scan "$BASE_ARGS"
+        fi
+
+        python3 "$ACTION_PATH/scripts/filter-allowlisted-findings.py" \
+          --allowlist "$GITHUB_WORKSPACE/$ALLOWLIST" < "$findings"

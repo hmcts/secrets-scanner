@@ -66,6 +66,7 @@ jobs:
 | `gitleaks_regex_internal_url` | no | `""` | Regex identifying internal URLs, added to the gitleaks rules |
 | `trufflehog_exclude_detectors` | no | `""` | Comma-separated TruffleHog detectors to disable. Requires the input below |
 | `trufflehog_exclude_detectors_in` | no | `""` | Paths the exclusion applies to, one regex per line. Everything else is still scanned by every detector |
+| `trufflehog_allowlist` | no | `""` | Path to a file retiring individual findings by fingerprint, for false positives no path can reach |
 
 ### Disabling a TruffleHog detector, within named paths
 
@@ -105,6 +106,54 @@ Two further limits:
 
 Each exclusion is visible in the caller's workflow file, the scope is printed in the run log, and a
 notice names the detectors disabled and where.
+
+### Retiring a single finding, where no path can reach it
+
+Path scoping cannot cover everything. **TruffleHog scans commit messages as well as files, and a
+commit message has no path** — so a false positive in one cannot be scoped away, and a repository-wide
+exclusion is refused above. That combination left such a finding with no lever at all (issue #47).
+
+`trufflehog_allowlist` names a file that retires findings one at a time:
+
+```yaml
+- uses: hmcts/secrets-scanner@v1
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
+    trufflehog_allowlist: .trufflehog-allowlist
+```
+
+```
+# .trufflehog-allowlist
+# <64-hex fingerprint>  <reason>
+e36cba747a9c3e178a5a42241bb2742abc6e3d29aaad762ccc6408bd97e2726e  Test method name quoted in a commit message, not a Lob key
+```
+
+**Getting a fingerprint:** you do not compute it. Every finding that is not allowlisted is printed
+with its fingerprint, so a failing run tells you exactly what to paste.
+
+A fingerprint is the SHA-256 of the detector name and the matched text. It carries no location, which
+has two consequences worth knowing: the same string quoted in four commits is **one** entry rather
+than four, and an entry keeps working when a file moves or history is rewritten.
+
+What keeps this narrow:
+
+- **One finding, not a detector or a directory.** A fingerprint matches one specific detector-plus-text
+  pair. There is no wildcard, so this cannot become an off-switch.
+- **A reason is mandatory.** An entry without one fails the run, because the next reader has to be able
+  to judge it.
+- **Stale entries are reported.** An entry matching nothing raises a warning — either the false
+  positive is gone and the line should go, or what it described has changed shape. An unpruned
+  allowlist is how a scanner goes quietly blind.
+- **A malformed allowlist fails the run** rather than being skipped, so a typo can never read as
+  "nothing to report".
+- **The matched text is never printed.** This path runs over real findings too, and a build log is a
+  durable, widely readable place for a live credential to end up.
+
+One trade-off to be aware of: with an allowlist set, the action runs TruffleHog itself instead of
+delegating to `trufflesecurity/trufflehog`, because that action fails the step on any finding and
+exposes no results to inspect — there is nowhere to apply a per-finding decision. Same image, same
+arguments, plus `--json`. Callers with no allowlist are on the original path, unchanged.
 
 ## 🔄 Keeping Up to Date
 
